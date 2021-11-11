@@ -8,5 +8,6 @@
 	</classpathentry>
 	<classpathentry kind="lib" path="C:/Jolie/jolie.jar"/>
 	<classpathentry kind="lib" path="C:/Users/lyngh/Downloads/jackson-all-1.9.9.jar"/>
+	<classpathentry kind="lib" path="C:/Users/lyngh/Desktop/apache-freemarker-2.3.31-bin/freemarker.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
