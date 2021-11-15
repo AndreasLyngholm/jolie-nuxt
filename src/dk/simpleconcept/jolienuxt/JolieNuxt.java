@@ -162,7 +162,7 @@ public class JolieNuxt  extends JavaService {
 		
 		Configuration cfg = new Configuration(Configuration.VERSION_2_3_31);
 		cfg.setClassForTemplateLoading(JolieNuxt.class, "/");
-		cfg.setTemplateExceptionHandler(new MyTemplateExceptionHandler());
+		cfg.setTemplateExceptionHandler(new MyTemplateExceptionHandler(file));
 		cfg.setLogTemplateExceptions(false);
 		
 		try {
@@ -194,19 +194,32 @@ public class JolieNuxt  extends JavaService {
 
 		return tempFile;
 	}
+	
+	class MyTemplateExceptionHandler implements TemplateExceptionHandler {
+		File file;
+		
+		public MyTemplateExceptionHandler(File tmpFile) {
+			file = tmpFile;
+		}
+
+		public void handleTemplateException(TemplateException te, Environment env, java.io.Writer out)
+	            throws TemplateException {
+	    	System.out.print("Missing variable found: ");
+	    	
+	    	String instruction = StringUtils.substringBetween(te.getFTLInstructionStack(), "{", "}");
+	    	
+	    	System.out.println(instruction);
+	    	
+	    	data.put(instruction, "TEST");
+
+	        //try {
+	        //    out.write("[ERROR: " + te.getMessage() + "]");
+	        //} catch (IOException e) {
+	        //    throw new TemplateException("Failed to print error message. Cause: " + e, env);
+	        //}
+	    }
+	}
 
 }
 
-class MyTemplateExceptionHandler implements TemplateExceptionHandler {
-    public void handleTemplateException(TemplateException te, Environment env, java.io.Writer out)
-            throws TemplateException {
-    	System.out.print("Missing variable found: ");
-    	
-    	System.out.println(StringUtils.substringBetween(te.getFTLInstructionStack(), "{", "}"));
-        //try {
-        //    out.write("[ERROR: " + te.getMessage() + "]");
-        //} catch (IOException e) {
-        //    throw new TemplateException("Failed to print error message. Cause: " + e, env);
-        //}
-    }
-}
+
