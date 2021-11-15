@@ -17,43 +17,65 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.commons.lang3.StringUtils;
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 
+import freemarker.core.Environment;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
+import freemarker.template.TemplateExceptionHandler;
+import jolie.net.CommMessage;
+import jolie.runtime.FaultException;
 import jolie.runtime.JavaService;
+import jolie.runtime.Value;
 
 public class JolieNuxt  extends JavaService {
 	
-	static Map<String, Object> data = new HashMap<String, Object>();
-	static ObjectMapper oMapper = new ObjectMapper();
-	static String[] functions = {"use", "render"};
+	Map<String, Object> data = new HashMap<String, Object>();
+	ObjectMapper oMapper = new ObjectMapper();
+	String[] functions = {"use", "render"};
 	
-	public static void main(String [] args) throws IOException 
+	public Value Render( Value request )
 	{
-		// ARG
-		//File template = new File("template.jtf");
+		String template_path = request.getFirstChild( "file" ).strValue();
 		
-		Path content = parseFile("C:\\Coding\\thesis\\new_demo\\", "template.jtf");
+		File template = new File(template_path);
+		String path = template.getPath().replaceFirst(template.getName(), "");
 		
-		System.out.println("Content: " + content.toString());
+		Value response = Value.create();
 		
-		Path html = render(new File(content.toString()));
+		try {
+			Path content = parseFile(path, template.getName());
+			
+			System.out.println("Content: " + content.toString());
+			
+			Path html = render(new File(content.toString()));
+			
+			String tempFileContent = Files
+	                .lines(html, StandardCharsets.UTF_8)
+	                .collect(Collectors.joining(System.lineSeparator()));
+	        System.out.println(tempFileContent);
+	        
+	        response.getFirstChild( "response" ).setValue( html.toString() );
+	        
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
-		String tempFileContent = Files
-                .lines(html, StandardCharsets.UTF_8)
-                .collect(Collectors.joining(System.lineSeparator()));
-        System.out.println(tempFileContent);
-		
+        return response;
 	}
 	
-	private static Path parseFile(String path, String template) throws IOException
+	private Path parseFile(String path, String template) throws IOException
 	{
 		List<String> content = new ArrayList<>();
 		try(BufferedReader br = new BufferedReader(new FileReader(path + template))) {
@@ -92,7 +114,7 @@ public class JolieNuxt  extends JavaService {
 		return tempFile;
 	}
 	
-	private static void parseLine(String path, String line) throws Exception
+	private void parseLine(String path, String line) throws Exception
 	{
 		String[] parts = line.split(" ");
 		String function = "";
@@ -132,7 +154,7 @@ public class JolieNuxt  extends JavaService {
 		}
 	}
 	
-	private static Path render(File file) throws IOException
+	private Path render(File file) throws IOException
 	{
 		Path tempFile = Files.createTempFile(null, null);
 		
@@ -140,11 +162,14 @@ public class JolieNuxt  extends JavaService {
 		
 		Configuration cfg = new Configuration(Configuration.VERSION_2_3_31);
 		cfg.setClassForTemplateLoading(JolieNuxt.class, "/");
+		cfg.setTemplateExceptionHandler(new MyTemplateExceptionHandler());
+		cfg.setLogTemplateExceptions(false);
 		
 		try {
 			cfg.setDirectoryForTemplateLoading(new File(path));
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
+			System.out.println("HERE 0");
 			e1.printStackTrace();
 		}
 		
@@ -155,16 +180,33 @@ public class JolieNuxt  extends JavaService {
 			// File output
 			Writer new_file = new FileWriter (new File(tempFile.toString()));
 			template.process(data, new_file);
+			
 			new_file.flush();
 			new_file.close();
 			
 		} catch (IOException e) {
+			System.out.println("HERE 1");
 			e.printStackTrace();
 		} catch (TemplateException e) {
+			System.out.println("HERE 2");
 			e.printStackTrace();
 		}
 
 		return tempFile;
 	}
 
+}
+
+class MyTemplateExceptionHandler implements TemplateExceptionHandler {
+    public void handleTemplateException(TemplateException te, Environment env, java.io.Writer out)
+            throws TemplateException {
+    	System.out.print("Missing variable found: ");
+    	
+    	System.out.println(StringUtils.substringBetween(te.getFTLInstructionStack(), "{", "}"));
+        //try {
+        //    out.write("[ERROR: " + te.getMessage() + "]");
+        //} catch (IOException e) {
+        //    throw new TemplateException("Failed to print error message. Cause: " + e, env);
+        //}
+    }
 }
